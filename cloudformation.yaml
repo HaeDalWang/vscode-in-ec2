@@ -1,0 +1,319 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EC2 인스턴스에 VS Code Server 배포'
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+    Description: EC2 인스턴스 타입 (최소 t3.medium)
+    
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: SSH 접근을 위한 기존 EC2 키페어 이름
+    
+  VsCodePassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: VS Code Server 접근 비밀번호 (최소 8자)
+    
+  AllowedCIDR:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: VS Code Server 접근을 허용할 CIDR 블록 (기본값은 모든 IP 허용)
+    
+  VolumeSize:
+    Type: Number
+    Default: 20
+    MinValue: 8
+    MaxValue: 100
+    Description: EBS 볼륨 크기 (GB)
+
+Mappings:
+  RegionMap:
+    ap-northeast-2:
+      AMI: ami-0c9c942bd7bf113a2
+
+Resources:
+  VsCodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: VS Code Server용 보안 그룹
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedCIDR
+          Description: SSH 접근
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: !Ref AllowedCIDR
+          Description: VS Code Server 접근
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-vscode-sg'
+
+  VsCodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-vscode-role'
+
+  VsCodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref VsCodeRole
+
+  VsCodeInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', AMI]
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      SecurityGroupIds:
+        - !Ref VsCodeSecurityGroup
+      IamInstanceProfile: !Ref VsCodeInstanceProfile
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: !Ref VolumeSize
+            DeleteOnTermination: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y curl wget git docker unzip
+
+          # Node.js 설치 (code-server 필요)
+          curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+          yum install -y nodejs
+
+          # code-server 설치
+          curl -fsSL https://code-server.dev/install.sh | sh
+
+          # student 사용자 생성 및 권한 설정
+          useradd -m -s /bin/bash student
+          usermod -aG wheel student
+          usermod -aG docker student
+          mkdir -p /home/student/.config/code-server
+
+          # code-server 설정
+          cat > /home/student/.config/code-server/config.yaml << EOF
+          bind-addr: 0.0.0.0:8080
+          auth: password
+          password: ${VsCodePassword}
+          cert: false
+          EOF
+
+          # 소유권 설정
+          chown -R student:student /home/student/.config
+
+          # systemd 서비스 생성
+          cat > /etc/systemd/system/code-server.service << EOF
+          [Unit]
+          Description=code-server
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=student
+          WorkingDirectory=/home/student
+          ExecStart=/usr/bin/code-server
+          Restart=on-failure
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          # Docker 활성화 및 시작
+          systemctl enable docker
+          systemctl start docker
+
+          # code-server 활성화 및 시작
+          systemctl daemon-reload
+          systemctl enable code-server
+          systemctl start code-server
+
+          # 개발 도구 설치
+          yum groupinstall -y "Development Tools"
+          yum install -y python3 python3-pip vim nano htop tree
+
+          # AWS 관련 도구 설치
+          # AWS CLI v2 설치
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          ./aws/install
+          rm -rf aws awscliv2.zip
+
+          # AWS CDK 설치
+          npm install -g aws-cdk
+
+          # AWS SAM CLI 설치
+          curl -LO https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+          unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
+          ./sam-installation/install
+          rm -rf sam-installation aws-sam-cli-linux-x86_64.zip
+
+          # AWS Copilot CLI 설치
+          curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+          chmod +x copilot && mv copilot /usr/local/bin
+
+          # kubectl 최신 버전 설치
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          mv kubectl /usr/local/bin/
+
+          # Terraform 최신 버전 설치
+          TERRAFORM_VERSION=$(curl -s https://api.github.com/repos/hashicorp/terraform/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
+          curl -LO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          unzip "terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          mv terraform /usr/local/bin/
+          rm "terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+
+          # Terragrunt 설치
+          TERRAGRUNT_VERSION=$(curl -s https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -LO "https://github.com/gruntwork-io/terragrunt/releases/download/${TERRAGRUNT_VERSION}/terragrunt_linux_amd64"
+          chmod +x terragrunt_linux_amd64
+          mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+
+          # Helm 최신 버전 설치
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+          # Kubernetes 관련 도구 설치
+          # kubectx, kubens 설치
+          curl -LO https://github.com/ahmetb/kubectx/releases/latest/download/kubectx
+          curl -LO https://github.com/ahmetb/kubectx/releases/latest/download/kubens
+          chmod +x kubectx kubens
+          mv kubectx kubens /usr/local/bin/
+
+          # k9s 설치 (Kubernetes 클러스터 관리 도구)
+          K9S_VERSION=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -LO "https://github.com/derailed/k9s/releases/download/${K9S_VERSION}/k9s_Linux_amd64.tar.gz"
+          tar -xzf k9s_Linux_amd64.tar.gz
+          mv k9s /usr/local/bin/
+          rm k9s_Linux_amd64.tar.gz
+
+          # Istio CLI 설치
+          curl -L https://istio.io/downloadIstio | sh -
+          mv istio-*/bin/istioctl /usr/local/bin/
+          rm -rf istio-*
+
+          # aws-runas 설치
+          AWS_RUNAS_VERSION=$(curl -s https://api.github.com/repos/mmmorris1975/aws-runas/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -LO "https://github.com/mmmorris1975/aws-runas/releases/download/${AWS_RUNAS_VERSION}/aws-runas-${AWS_RUNAS_VERSION}-linux-amd64.zip"
+          unzip "aws-runas-${AWS_RUNAS_VERSION}-linux-amd64.zip"
+          mv aws-runas /usr/local/bin/
+          rm "aws-runas-${AWS_RUNAS_VERSION}-linux-amd64.zip"
+
+          # JSON/YAML 파서 설치
+          yum install -y jq
+
+          # yq 최신 버전 설치
+          YQ_VERSION=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -LO "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          chmod +x yq_linux_amd64
+          mv yq_linux_amd64 /usr/local/bin/yq
+
+          # 컨테이너 관련 도구
+          # Docker Compose 설치
+          DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+
+          # 모니터링 및 로깅 도구
+          # Prometheus 설치
+          PROMETHEUS_VERSION=$(curl -s https://api.github.com/repos/prometheus/prometheus/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
+          curl -LO "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
+          tar -xzf prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz
+          mv prometheus-${PROMETHEUS_VERSION}.linux-amd64/prometheus /usr/local/bin/
+          mv prometheus-${PROMETHEUS_VERSION}.linux-amd64/promtool /usr/local/bin/
+          rm -rf prometheus-${PROMETHEUS_VERSION}*
+
+          # AWS 및 클라우드 관련 Python 패키지 설치
+          pip3 install boto3 botocore requests kubernetes docker-py awscli-cwlogs
+          pip3 install ansible ansible-lint
+          pip3 install pyyaml jsonschema
+          pip3 install awscli-plugin-endpoint
+
+          # Git 설정 및 유용한 도구들
+          git config --global init.defaultBranch main
+          
+          # Starship 프롬프트 설치 (터미널 꾸미기)
+          curl -sS https://starship.rs/install.sh | sh -s -- -y
+
+          # student 사용자 환경 설정
+          su - student -c "
+          echo 'export PATH=/usr/local/bin:\$PATH' >> ~/.bashrc
+          echo 'eval \"\$(starship init bash)\"' >> ~/.bashrc
+          echo 'alias k=kubectl' >> ~/.bashrc
+          echo 'alias tf=terraform' >> ~/.bashrc
+          echo 'alias tg=terragrunt' >> ~/.bashrc
+          echo 'alias ll=\"ls -la\"' >> ~/.bashrc
+          echo 'alias la=\"ls -A\"' >> ~/.bashrc
+          echo 'alias l=\"ls -CF\"' >> ~/.bashrc
+          echo 'complete -F __start_kubectl k' >> ~/.bashrc
+          "
+
+          # 권한 설정
+          chown -R student:student /home/student
+
+          # 완료 신호 전송
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource VsCodeInstance --region ${AWS::Region}
+
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-vscode-server'
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT15M
+
+Outputs:
+  InstanceId:
+    Description: EC2 인스턴스 ID
+    Value: !Ref VsCodeInstance
+    Export:
+      Name: !Sub '${AWS::StackName}-InstanceId'
+
+  PublicIP:
+    Description: 인스턴스의 퍼블릭 IP 주소
+    Value: !GetAtt VsCodeInstance.PublicIp
+    Export:
+      Name: !Sub '${AWS::StackName}-PublicIP'
+
+  VsCodeUrl:
+    Description: VS Code Server 접근 URL
+    Value: !Sub 'http://${VsCodeInstance.PublicIp}:8080'
+    Export:
+      Name: !Sub '${AWS::StackName}-VsCodeUrl'
+
+  SSHCommand:
+    Description: 인스턴스 SSH 접속 명령어
+    Value: !Sub 'ssh -i your-key.pem ec2-user@${VsCodeInstance.PublicIp}'
+    Export:
+      Name: !Sub '${AWS::StackName}-SSHCommand'
+
+  StudentUserInfo:
+    Description: VS Code Server 사용자 정보
+    Value: 'Username: student, Password: 설정한 비밀번호'
+    Export:
+      Name: !Sub '${AWS::StackName}-StudentUserInfo'
