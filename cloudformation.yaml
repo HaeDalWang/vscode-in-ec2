@@ -183,15 +183,15 @@ Resources:
           mv kubectl /usr/local/bin/
 
           # Terraform 최신 버전 설치
-          TERRAFORM_VERSION=$(curl -s https://api.github.com/repos/hashicorp/terraform/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
-          curl -LO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
-          unzip "terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          TERRAFORM_VER=$(curl -s https://api.github.com/repos/hashicorp/terraform/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
+          curl -LO "https://releases.hashicorp.com/terraform/$TERRAFORM_VER/terraform_${TERRAFORM_VER}_linux_amd64.zip"
+          unzip "terraform_${TERRAFORM_VER}_linux_amd64.zip"
           mv terraform /usr/local/bin/
-          rm "terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          rm "terraform_${TERRAFORM_VER}_linux_amd64.zip"
 
           # Terragrunt 설치
-          TERRAGRUNT_VERSION=$(curl -s https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | grep tag_name | cut -d '"' -f 4)
-          curl -LO "https://github.com/gruntwork-io/terragrunt/releases/download/${TERRAGRUNT_VERSION}/terragrunt_linux_amd64"
+          TERRAGRUNT_VER=$(curl -s https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -LO "https://github.com/gruntwork-io/terragrunt/releases/download/$TERRAGRUNT_VER/terragrunt_linux_amd64"
           chmod +x terragrunt_linux_amd64
           mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
 
@@ -206,8 +206,8 @@ Resources:
           mv kubectx kubens /usr/local/bin/
 
           # k9s 설치 (Kubernetes 클러스터 관리 도구)
-          K9S_VERSION=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep tag_name | cut -d '"' -f 4)
-          curl -LO "https://github.com/derailed/k9s/releases/download/${K9S_VERSION}/k9s_Linux_amd64.tar.gz"
+          K9S_VER=$(curl -s https://api.github.com/repos/derailed/k9s/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -LO "https://github.com/derailed/k9s/releases/download/$K9S_VER/k9s_Linux_amd64.tar.gz"
           tar -xzf k9s_Linux_amd64.tar.gz
           mv k9s /usr/local/bin/
           rm k9s_Linux_amd64.tar.gz
@@ -218,35 +218,35 @@ Resources:
           rm -rf istio-*
 
           # aws-runas 설치
-          AWS_RUNAS_VERSION=$(curl -s https://api.github.com/repos/mmmorris1975/aws-runas/releases/latest | grep tag_name | cut -d '"' -f 4)
-          curl -LO "https://github.com/mmmorris1975/aws-runas/releases/download/${AWS_RUNAS_VERSION}/aws-runas-${AWS_RUNAS_VERSION}-linux-amd64.zip"
-          unzip "aws-runas-${AWS_RUNAS_VERSION}-linux-amd64.zip"
+          AWS_RUNAS_VER=$(curl -s https://api.github.com/repos/mmmorris1975/aws-runas/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -LO "https://github.com/mmmorris1975/aws-runas/releases/download/$AWS_RUNAS_VER/aws-runas-$AWS_RUNAS_VER-linux-amd64.zip"
+          unzip "aws-runas-$AWS_RUNAS_VER-linux-amd64.zip"
           mv aws-runas /usr/local/bin/
-          rm "aws-runas-${AWS_RUNAS_VERSION}-linux-amd64.zip"
+          rm "aws-runas-$AWS_RUNAS_VER-linux-amd64.zip"
 
           # JSON/YAML 파서 설치
           yum install -y jq
 
           # yq 최신 버전 설치
-          YQ_VERSION=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep tag_name | cut -d '"' -f 4)
-          curl -LO "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          YQ_VER=$(curl -s https://api.github.com/repos/mikefarah/yq/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -LO "https://github.com/mikefarah/yq/releases/download/$YQ_VER/yq_linux_amd64"
           chmod +x yq_linux_amd64
           mv yq_linux_amd64 /usr/local/bin/yq
 
           # 컨테이너 관련 도구
           # Docker Compose 설치
-          DOCKER_COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)
-          curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          DOCKER_COMPOSE_VER=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)
+          curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VER/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           chmod +x /usr/local/bin/docker-compose
 
           # 모니터링 및 로깅 도구
           # Prometheus 설치
-          PROMETHEUS_VERSION=$(curl -s https://api.github.com/repos/prometheus/prometheus/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
-          curl -LO "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz"
-          tar -xzf prometheus-${PROMETHEUS_VERSION}.linux-amd64.tar.gz
-          mv prometheus-${PROMETHEUS_VERSION}.linux-amd64/prometheus /usr/local/bin/
-          mv prometheus-${PROMETHEUS_VERSION}.linux-amd64/promtool /usr/local/bin/
-          rm -rf prometheus-${PROMETHEUS_VERSION}*
+          PROMETHEUS_VER=$(curl -s https://api.github.com/repos/prometheus/prometheus/releases/latest | grep tag_name | cut -d '"' -f 4 | sed 's/v//')
+          curl -LO "https://github.com/prometheus/prometheus/releases/download/v$PROMETHEUS_VER/prometheus-$PROMETHEUS_VER.linux-amd64.tar.gz"
+          tar -xzf prometheus-$PROMETHEUS_VER.linux-amd64.tar.gz
+          mv prometheus-$PROMETHEUS_VER.linux-amd64/prometheus /usr/local/bin/
+          mv prometheus-$PROMETHEUS_VER.linux-amd64/promtool /usr/local/bin/
+          rm -rf prometheus-$PROMETHEUS_VER*
 
           # AWS 및 클라우드 관련 Python 패키지 설치
           pip3 install boto3 botocore requests kubernetes docker-py awscli-cwlogs
