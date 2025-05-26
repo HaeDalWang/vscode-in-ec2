@@ -19,8 +19,7 @@ EC2에서 실행되는 완전한 DevOps 학습 환경입니다.
 
 1. 아래 버튼을 클릭하여 배포를 시작하세요:
 
-[![Deploy to AWS](https://img.shields.io/badge/Deploy%20to-AWS-orange?style=for-the-badge&logo=amazon-aws)](https://console.aws.amazon.com/cloudformation/home?region=ap-northeast-2#/stacks/create/review?templateURL=https://raw.githubusercontent.com/HaeDalWang/vscode-in-ec2/refs/heads/main/cloudformation.yaml&stackName=VSCode-Server-Stack&param_InstanceType=t3.medium&param_VolumeSize=20
-)
+[![Deploy to AWS](https://img.shields.io/badge/Deploy%20to-AWS-orange?style=for-the-badge&logo=amazon-aws)](https://console.aws.amazon.com/cloudformation/home?region=ap-northeast-2#/stacks/create/review?templateURL=https://seungdobae-cloudformations.s3.ap-northeast-2.amazonaws.com/cloudformation.yaml&stackName=VSCode-Server-Stack&param_InstanceType=t3.medium&param_VolumeSize=20)
 
 2. 필수 파라미터를 입력하세요:
    - **KeyPairName**: 기존 EC2 키페어 선택
