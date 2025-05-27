@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'EC2 인스턴스에 VS Code Server 배포'
+Description: 'Deploy VS Code Server on EC2 Instance'
 
 Parameters:
   InstanceType:
@@ -10,29 +10,29 @@ Parameters:
       - t3.large
       - t3.xlarge
       - t3.2xlarge
-    Description: EC2 인스턴스 타입 (최소 t3.medium)
+    Description: EC2 instance type (minimum t3.medium)
     
   KeyPairName:
     Type: AWS::EC2::KeyPair::KeyName
-    Description: SSH 접근을 위한 기존 EC2 키페어 이름
+    Description: Existing EC2 KeyPair name for SSH access
     
   VsCodePassword:
     Type: String
     NoEcho: true
     MinLength: 8
-    Description: VS Code Server 접근 비밀번호 (최소 8자)
+    Description: VS Code Server access password (minimum 8 characters)
     
   AllowedCIDR:
     Type: String
     Default: 0.0.0.0/0
-    Description: VS Code Server 접근을 허용할 CIDR 블록 (기본값은 모든 IP 허용)
+    Description: CIDR block to allow VS Code Server access (default allows all IPs)
     
   VolumeSize:
     Type: Number
     Default: 20
     MinValue: 8
     MaxValue: 100
-    Description: EBS 볼륨 크기 (GB)
+    Description: EBS volume size (GB)
 
 Mappings:
   RegionMap:
@@ -43,18 +43,18 @@ Resources:
   VsCodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: VS Code Server용 보안 그룹
+      GroupDescription: Security group for VS Code Server
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref AllowedCIDR
-          Description: SSH 접근
+          Description: SSH access
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
           CidrIp: !Ref AllowedCIDR
-          Description: VS Code Server 접근
+          Description: VS Code Server access
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-vscode-sg'
@@ -270,31 +270,31 @@ Resources:
 
 Outputs:
   InstanceId:
-    Description: EC2 인스턴스 ID
+    Description: EC2 Instance ID
     Value: !Ref VsCodeInstance
     Export:
       Name: !Sub '${AWS::StackName}-InstanceId'
 
   PublicIP:
-    Description: 인스턴스의 퍼블릭 IP 주소
+    Description: Public IP address of the instance
     Value: !GetAtt VsCodeInstance.PublicIp
     Export:
       Name: !Sub '${AWS::StackName}-PublicIP'
 
   VsCodeUrl:
-    Description: VS Code Server 접근 URL
+    Description: VS Code Server access URL
     Value: !Sub 'http://${VsCodeInstance.PublicIp}:8080'
     Export:
       Name: !Sub '${AWS::StackName}-VsCodeUrl'
 
   SSHCommand:
-    Description: 인스턴스 SSH 접속 명령어
+    Description: SSH command to connect to the instance
     Value: !Sub 'ssh -i your-key.pem ec2-user@${VsCodeInstance.PublicIp}'
     Export:
       Name: !Sub '${AWS::StackName}-SSHCommand'
 
   StudentUserInfo:
-    Description: VS Code Server 사용자 정보
-    Value: 'Username: student, Password: 설정한 비밀번호'
+    Description: VS Code Server user information
+    Value: 'Username: student, Password: configured password'
     Export:
       Name: !Sub '${AWS::StackName}-StudentUserInfo'
