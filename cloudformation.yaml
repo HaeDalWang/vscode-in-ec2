@@ -102,8 +102,17 @@ Resources:
             - ''
             - - |
                 #!/bin/bash
+                set -e
+                exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+                
                 export DEBIAN_FRONTEND=noninteractive
+                
+                # CloudFormation helper scripts 설치 (Ubuntu용)
                 apt update -y
+                apt install -y python3-pip
+                pip3 install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
+                
+                # 기본 패키지 설치
                 apt install -y curl wget git docker.io unzip build-essential
 
                 # Node.js 설치 (code-server 필요)
@@ -160,25 +169,26 @@ Resources:
                 systemctl enable code-server
                 systemctl start code-server
 
-                # 개발 도구 설치
+                # 기본 개발 도구만 설치 (시간 단축)
                 apt install -y python3 python3-pip vim nano htop tree jq
 
-                # AWS 관련 도구 설치
                 # AWS CLI v2 설치
                 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
                 unzip awscliv2.zip
                 ./aws/install
                 rm -rf aws awscliv2.zip
 
-                # AWS CDK 설치
-                npm install -g aws-cdk
-
-                # kubectl 최신 버전 설치
+                # kubectl 설치
                 curl -LO "https://dl.k8s.io/release/$$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                 chmod +x kubectl
                 mv kubectl /usr/local/bin/
 
-                # Helm 최신 버전 설치
+                # 나머지 도구들은 백그라운드에서 설치
+                nohup bash -c '
+                # AWS CDK 설치
+                npm install -g aws-cdk
+
+                # Helm 설치
                 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
                 # Terraform 설치
@@ -188,15 +198,11 @@ Resources:
                 mv terraform /usr/local/bin/
                 rm "terraform_$${TERRAFORM_VER}_linux_amd64.zip"
 
-                # krew (kubectl plugin manager) 설치
-                KREW_VER=$$(curl -s https://api.github.com/repos/kubernetes-sigs/krew/releases/latest | grep tag_name | cut -d '"' -f 4)
-                curl -LO "https://github.com/kubernetes-sigs/krew/releases/download/$${KREW_VER}/krew-linux_amd64.tar.gz"
-                tar -xzf krew-linux_amd64.tar.gz
-                
-                # student 사용자로 krew 설치
+                # krew 설치 (student 사용자로)
                 su - student -c "
                 cd /tmp
-                curl -LO \"https://github.com/kubernetes-sigs/krew/releases/download/$${KREW_VER}/krew-linux_amd64.tar.gz\"
+                KREW_VER=\$$(curl -s https://api.github.com/repos/kubernetes-sigs/krew/releases/latest | grep tag_name | cut -d '\"' -f 4)
+                curl -LO \"https://github.com/kubernetes-sigs/krew/releases/download/\$${KREW_VER}/krew-linux_amd64.tar.gz\"
                 tar -xzf krew-linux_amd64.tar.gz
                 ./krew-linux_amd64 install krew
                 rm krew-linux_amd64*
@@ -204,8 +210,6 @@ Resources:
                 kubectl krew install ctx
                 kubectl krew install ns
                 "
-                
-                rm -f krew-linux_amd64*
 
                 # kubecolor 설치
                 KUBECOLOR_VER=$$(curl -s https://api.github.com/repos/hidetatz/kubecolor/releases/latest | grep tag_name | cut -d '"' -f 4)
@@ -214,7 +218,7 @@ Resources:
                 mv kubecolor /usr/local/bin/
                 rm "kubecolor_$${KUBECOLOR_VER}_Linux_x86_64.tar.gz"
 
-                # kube-ps1 설치 (Kubernetes 프롬프트)
+                # kube-ps1 설치
                 curl -LO https://raw.githubusercontent.com/jonmosco/kube-ps1/master/kube-ps1.sh
                 mv kube-ps1.sh /usr/local/bin/
                 chmod +x /usr/local/bin/kube-ps1.sh
@@ -226,11 +230,12 @@ Resources:
                 mv aws-runas /usr/local/bin/
                 rm "aws-runas-$${AWS_RUNAS_VER}-linux-amd64.zip"
 
-                # Git 설정 및 유용한 도구들
-                git config --global init.defaultBranch main
-                
-                # Starship 프롬프트 설치 (터미널 꾸미기)
+                # Starship 설치
                 curl -sS https://starship.rs/install.sh | sh -s -- -y
+                ' > /var/log/background-install.log 2>&1 &
+
+                # Git 설정
+                git config --global init.defaultBranch main
 
                 # student 사용자 환경 설정
                 su - student -c "
@@ -253,8 +258,8 @@ Resources:
                 # 권한 설정
                 chown -R student:student /home/student
 
-                # 완료 신호 전송
-                /opt/aws/bin/cfn-signal -e $? --stack 
+                # 완료 신호 전송 (cfn-signal 경로 수정)
+                /usr/local/bin/cfn-signal -e $? --stack 
               - !Ref 'AWS::StackName'
               - ' --resource VsCodeInstance --region '
               - !Ref 'AWS::Region'
@@ -265,7 +270,7 @@ Resources:
     CreationPolicy:
       ResourceSignal:
         Count: 1
-        Timeout: PT15M
+        Timeout: PT25M
 
 Outputs:
   InstanceId:
