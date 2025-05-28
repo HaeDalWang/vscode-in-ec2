@@ -122,14 +122,12 @@ Resources:
                 # code-server 설치
                 curl -fsSL https://code-server.dev/install.sh | sh
 
-                # student 사용자 생성 및 권한 설정
-                useradd -m -s /bin/bash student
-                usermod -aG sudo student
-                usermod -aG docker student
-                mkdir -p /home/student/.config/code-server
+                # ubuntu 사용자 권한 설정
+                usermod -aG docker ubuntu
+                mkdir -p /home/ubuntu/.config/code-server
 
                 # code-server 설정
-                cat > /home/student/.config/code-server/config.yaml << EOF
+                cat > /home/ubuntu/.config/code-server/config.yaml << EOF
                 bind-addr: 0.0.0.0:8080
                 auth: password
                 password: 
@@ -140,7 +138,7 @@ Resources:
                 EOF
 
                 # 소유권 설정
-                chown -R student:student /home/student/.config
+                chown -R ubuntu:ubuntu /home/ubuntu/.config
 
                 # systemd 서비스 생성
                 cat > /etc/systemd/system/code-server.service << EOF
@@ -150,8 +148,8 @@ Resources:
 
                 [Service]
                 Type=simple
-                User=student
-                WorkingDirectory=/home/student
+                User=ubuntu
+                WorkingDirectory=/home/ubuntu
                 ExecStart=/usr/bin/code-server
                 Restart=on-failure
                 RestartSec=5
@@ -198,8 +196,8 @@ Resources:
                 mv terraform /usr/local/bin/
                 rm "terraform_$${TERRAFORM_VER}_linux_amd64.zip"
 
-                # krew 설치 (student 사용자로)
-                su - student -c "
+                # krew 설치 (ubuntu 사용자로)
+                su - ubuntu -c "
                 cd /tmp
                 KREW_VER=\$$(curl -s https://api.github.com/repos/kubernetes-sigs/krew/releases/latest | grep tag_name | cut -d '\"' -f 4)
                 curl -LO \"https://github.com/kubernetes-sigs/krew/releases/download/\$${KREW_VER}/krew-linux_amd64.tar.gz\"
@@ -232,13 +230,12 @@ Resources:
 
                 # Starship 설치
                 curl -sS https://starship.rs/install.sh | sh -s -- -y
-                ' > /var/log/background-install.log 2>&1 &
 
                 # Git 설정
                 git config --global init.defaultBranch main
 
-                # student 사용자 환경 설정
-                su - student -c "
+                # ubuntu 사용자 환경 설정
+                su - ubuntu -c "
                 echo 'export PATH=/usr/local/bin:\$PATH' >> ~/.bashrc
                 echo 'export PATH=\"\${KREW_ROOT:-\$HOME/.krew}/bin:\$PATH\"' >> ~/.bashrc
                 echo 'eval \"\$(starship init bash)\"' >> ~/.bashrc
@@ -256,7 +253,7 @@ Resources:
                 "
 
                 # 권한 설정
-                chown -R student:student /home/student
+                chown -R ubuntu:ubuntu /home/ubuntu
 
                 # 완료 신호 전송 (cfn-signal 경로 수정)
                 /usr/local/bin/cfn-signal -e $? --stack 
@@ -299,6 +296,6 @@ Outputs:
 
   StudentUserInfo:
     Description: VS Code Server user information
-    Value: 'Username: student, Password: configured password'
+    Value: 'Username: ubuntu, Password: configured password'
     Export:
-      Name: !Sub '${AWS::StackName}-StudentUserInfo'
+      Name: !Sub '${AWS::StackName}-UserInfo'

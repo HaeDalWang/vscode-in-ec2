@@ -21,7 +21,7 @@ EC2에서 실행되는 완전한 DevOps 학습 환경입니다.
 - **OS**: Ubuntu 22.04 LTS (Jammy Jellyfish)
 - **AMI**: ami-0f3a440bbcff3d043
 - **리전**: 서울 리전(ap-northeast-2) 전용
-- **기본 사용자**: ubuntu, student
+- **기본 사용자**: ubuntu
 
 **주의사항:**
 - 서울 리전(ap-northeast-2)에서만 작동합니다
@@ -105,5 +105,5 @@ kubectl krew install neat
 ## 📝 접속 정보
 - **VS Code Server**: `http://PUBLIC_IP:8080`
 - **SSH 접속**: `ssh -i your-key.pem ubuntu@PUBLIC_IP`
-- **VS Code 사용자**: student
+- **VS Code 사용자**: ubuntu
 - **비밀번호**: 배포 시 설정한 비밀번호

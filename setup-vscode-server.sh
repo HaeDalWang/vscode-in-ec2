@@ -48,7 +48,7 @@ run_command() {
 
 # 파라미터 설정
 VSCODE_PASSWORD=${1:-"vscode123!"}  # 기본 비밀번호
-STUDENT_USER="student"
+UBUNTU_USER="ubuntu"
 
 log_info "VS Code Server 설치를 시작합니다..."
 log_info "비밀번호: $VSCODE_PASSWORD"
@@ -74,20 +74,20 @@ run_command "apt install -y nodejs" "Node.js 설치"
 run_command "curl -fsSL https://code-server.dev/install.sh | sh" "code-server 설치"
 
 # student 사용자 생성 및 권한 설정
-log_info "사용자 '$STUDENT_USER' 생성 및 권한 설정 중..."
-if ! id "$STUDENT_USER" &>/dev/null; then
-    run_command "useradd -m -s /bin/bash $STUDENT_USER" "사용자 생성"
+log_info "사용자 '$UBUNTU_USER' 생성 및 권한 설정 중..."
+if ! id "$UBUNTU_USER" &>/dev/null; then
+    run_command "useradd -m -s /bin/bash $UBUNTU_USER" "사용자 생성"
 else
-    log_warning "사용자 '$STUDENT_USER'가 이미 존재합니다."
+    log_warning "사용자 '$UBUNTU_USER'가 이미 존재합니다."
 fi
 
-run_command "usermod -aG sudo $STUDENT_USER" "sudo 그룹 추가"
-run_command "usermod -aG docker $STUDENT_USER" "docker 그룹 추가"
-run_command "mkdir -p /home/$STUDENT_USER/.config/code-server" "code-server 설정 디렉토리 생성"
+run_command "usermod -aG sudo $UBUNTU_USER" "sudo 그룹 추가"
+run_command "usermod -aG docker $UBUNTU_USER" "docker 그룹 추가"
+run_command "mkdir -p /home/$UBUNTU_USER/.config/code-server" "code-server 설정 디렉토리 생성"
 
 # code-server 설정
 log_info "code-server 설정 중..."
-cat > /home/$STUDENT_USER/.config/code-server/config.yaml << EOF
+cat > /home/$UBUNTU_USER/.config/code-server/config.yaml << EOF
 bind-addr: 0.0.0.0:8080
 auth: password
 password: $VSCODE_PASSWORD
@@ -95,7 +95,7 @@ cert: false
 EOF
 
 # 소유권 설정
-chown -R $STUDENT_USER:$STUDENT_USER /home/$STUDENT_USER/.config
+chown -R $UBUNTU_USER:$UBUNTU_USER /home/$UBUNTU_USER/.config
 
 # systemd 서비스 생성
 log_info "systemd 서비스 생성 중..."
@@ -106,8 +106,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=$STUDENT_USER
-WorkingDirectory=/home/$STUDENT_USER
+User=$UBUNTU_USER
+WorkingDirectory=/home/$UBUNTU_USER
 ExecStart=/usr/bin/code-server
 Restart=on-failure
 RestartSec=5
@@ -218,7 +218,7 @@ curl -sS https://starship.rs/install.sh | sh -s -- -y
 
 # student 사용자 환경 설정
 log_info "사용자 환경 설정 중..."
-su - $STUDENT_USER -c "
+su - $UBUNTU_USER -c "
 echo 'export PATH=/usr/local/bin:\$PATH' >> ~/.bashrc
 echo 'eval \"\$(starship init bash)\"' >> ~/.bashrc
 echo 'alias k=kubectl' >> ~/.bashrc
@@ -229,7 +229,7 @@ echo 'complete -F __start_kubectl k' >> ~/.bashrc
 "
 
 # 권한 설정
-chown -R $STUDENT_USER:$STUDENT_USER /home/$STUDENT_USER
+chown -R $UBUNTU_USER:$UBUNTU_USER /home/$UBUNTU_USER
 
 # 서비스 상태 확인
 log_info "서비스 상태 확인 중..."
@@ -253,7 +253,7 @@ log_success "=== VS Code Server 설치 완료! ==="
 echo ""
 log_info "접속 정보:"
 echo "  - URL: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo 'YOUR_PUBLIC_IP'):8080"
-echo "  - 사용자: $STUDENT_USER"
+echo "  - 사용자: $UBUNTU_USER"
 echo "  - 비밀번호: $VSCODE_PASSWORD"
 echo ""
 log_info "설치된 도구들:"
