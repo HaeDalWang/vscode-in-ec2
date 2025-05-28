@@ -1,6 +1,22 @@
 # AWS DevOps 학습 환경 - VS Code Server
 EC2에서 실행되는 완전한 DevOps 학습 환경입니다.
 
+## 🚀 빠른 시작
+
+1. 아래 버튼을 클릭하여 배포를 시작하세요:
+
+<a href="https://console.aws.amazon.com/cloudformation/home?region=ap-northeast-2#/stacks/create/review?templateURL=https://seungdobae-cloudformations.s3.ap-northeast-2.amazonaws.com/cloudformation.yaml&stackName=VSCode-Server-Stack&param_InstanceType=t3.medium&param_VolumeSize=20" target="_blank">
+  <img src="https://img.shields.io/badge/Deploy%20to-AWS-orange?style=for-the-badge&logo=amazon-aws" alt="Deploy to AWS">
+</a>
+
+2. 필수 파라미터를 입력하세요:
+   - **KeyPairName**: 기존 EC2 키페어 선택
+   - **VsCodePassword**: VS Code 접속 비밀번호 (8자 이상)
+
+3. 스택 생성 후 Outputs 탭에서 VS Code URL을 확인하세요
+
+4. 브라우저에서 해당 URL로 접속하여 학습을 시작하세요!
+
 ## 🖥️ 시스템 정보
 - **OS**: Ubuntu 22.04 LTS (Jammy Jellyfish)
 - **AMI**: ami-0f3a440bbcff3d043
@@ -43,22 +59,6 @@ EC2에서 실행되는 완전한 DevOps 학습 환경입니다.
 - **VS Code Server** - 웹 기반 IDE
 - **vim, nano** - 텍스트 에디터
 - **htop, tree** - 시스템 모니터링
-
-## 🚀 빠른 시작
-
-1. 아래 버튼을 클릭하여 배포를 시작하세요:
-
-<a href="https://console.aws.amazon.com/cloudformation/home?region=ap-northeast-2#/stacks/create/review?templateURL=https://seungdobae-cloudformations.s3.ap-northeast-2.amazonaws.com/cloudformation.yaml&stackName=VSCode-Server-Stack&param_InstanceType=t3.medium&param_VolumeSize=20" target="_blank">
-  <img src="https://img.shields.io/badge/Deploy%20to-AWS-orange?style=for-the-badge&logo=amazon-aws" alt="Deploy to AWS">
-</a>
-
-2. 필수 파라미터를 입력하세요:
-   - **KeyPairName**: 기존 EC2 키페어 선택
-   - **VsCodePassword**: VS Code 접속 비밀번호 (8자 이상)
-
-3. 스택 생성 후 Outputs 탭에서 VS Code URL을 확인하세요
-
-4. 브라우저에서 해당 URL로 접속하여 학습을 시작하세요!
 
 ## 💡 사용 팁
 
